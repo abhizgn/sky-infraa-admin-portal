@@ -210,7 +210,7 @@ const Dashboard = () => {
                     <TableCell>₹{transaction.amount}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={transaction.status === 'Paid' ? 'success' : 'secondary'}
+                        variant={transaction.status === 'Paid' ? 'default' : 'secondary'}
                       >
                         {transaction.status}
                       </Badge>
