@@ -13,6 +13,7 @@ import Maintenance from "./pages/Admin/Maintenance";
 import Expenses from "./pages/Admin/Expenses";
 import Arrears from "./pages/Admin/Arrears";
 import Settings from "./pages/Admin/Settings";
+import OwnerDashboard from "./pages/Owner/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/admin/expenses" element={<Expenses />} />
           <Route path="/admin/arrears" element={<Arrears />} />
           <Route path="/admin/settings" element={<Settings />} />
+          <Route path="/owner" element={<OwnerDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
