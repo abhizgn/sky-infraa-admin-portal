@@ -17,6 +17,7 @@ import OwnerDashboard from "./pages/Owner/Dashboard";
 import OwnerBills from "./pages/Owner/Bills";
 import OwnerPayNow from "./pages/Owner/PayNow";
 import OwnerArrears from "./pages/Owner/Arrears";
+import OwnerSettings from "./pages/Owner/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/owner/bills" element={<OwnerBills />} />
           <Route path="/owner/pay-now" element={<OwnerPayNow />} />
           <Route path="/owner/arrears" element={<OwnerArrears />} />
+          <Route path="/owner/settings" element={<OwnerSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
