@@ -15,6 +15,7 @@ import Arrears from "./pages/Admin/Arrears";
 import Settings from "./pages/Admin/Settings";
 import OwnerDashboard from "./pages/Owner/Dashboard";
 import OwnerBills from "./pages/Owner/Bills";
+import OwnerPayNow from "./pages/Owner/PayNow";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/admin/settings" element={<Settings />} />
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/bills" element={<OwnerBills />} />
+          <Route path="/owner/pay-now" element={<OwnerPayNow />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
