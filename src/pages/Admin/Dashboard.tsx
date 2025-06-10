@@ -1,271 +1,264 @@
-import React from 'react';
+// import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+// import {
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableHead,
+//   TableHeader,
+//   TableRow,
+// } from '@/components/ui/table';
 import {
   Building2,
-  IndianRupee,
-  AlertTriangle,
-  TrendingUp,
-  Calendar,
-  Bell,
-  Send,
-  Plus,
-  FileText,
   Users,
+  Receipt,
+  Wallet,
+  LogOut,
+  Plus,
+  Home,
+  UserPlus,
+  FileText,
+  BarChart
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { Navigation } from '@/components/admin/Navigation';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '@/lib/api/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock data for recent transactions
-const recentTransactions = [
-  { id: 'T001', date: '2024-05-01', description: 'Maintenance Fee', amount: 1500, status: 'Paid' },
-  { id: 'T002', date: '2024-05-05', description: 'Water Bill', amount: 300, status: 'Pending' },
-  { id: 'T003', date: '2024-05-10', description: 'Electricity Bill', amount: 750, status: 'Paid' },
-  { id: 'T004', date: '2024-05-15', description: 'Security Fee', amount: 1000, status: 'Paid' },
-];
-
-// Mock data for arrears
-const arrearsData = [
-  { id: 'A001', owner: 'John Doe', apartment: 'A-101', amount: 2500, dueDate: '2024-05-20' },
-  { id: 'A002', owner: 'Jane Smith', apartment: 'B-202', amount: 1800, dueDate: '2024-05-25' },
-];
-
-// Mock data for expenses
-const expensesData = [
-  { id: 'E001', category: 'Maintenance', amount: 5000, date: '2024-05-01' },
-  { id: 'E002', category: 'Utilities', amount: 3000, date: '2024-05-05' },
-  { id: 'E003', category: 'Repairs', amount: 2000, date: '2024-05-10' },
-];
-
-// Mock data for bar chart
-const barChartData = [
-  { name: 'Jan', income: 40000, expenses: 24000 },
-  { name: 'Feb', income: 30000, expenses: 13980 },
-  { name: 'Mar', income: 20000, expenses: 9800 },
-  { name: 'Apr', income: 27800, expenses: 3908 },
-  { name: 'May', income: 18900, expenses: 4800 },
-];
-
-// Mock data for pie chart
-const pieChartData = [
-  { name: 'Maintenance', value: 400 },
-  { name: 'Utilities', value: 300 },
-  { name: 'Security', value: 300 },
-  { name: 'Repairs', value: 200 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+interface DashboardStats {
+  totalFlats: number;
+  totalOwners: number;
+  pendingBills: number;
+  totalArrears: number;
+}
 
 const Dashboard = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await API.get<DashboardStats>('/admin/dashboard/summary');
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const statsCards = [
+    {
+      title: 'Total Flats',
+      value: stats?.totalFlats ?? 0,
+      icon: Building2,
+      color: 'text-blue-500',
+      onClick: () => navigate('/admin/flats')
+    },
+    {
+      title: 'Total Owners',
+      value: stats?.totalOwners ?? 0,
+      icon: Users,
+      color: 'text-green-500',
+      onClick: () => navigate('/admin/owners')
+    },
+    {
+      title: 'Pending Bills',
+      value: stats?.pendingBills ?? 0,
+      icon: Receipt,
+      color: 'text-orange-500',
+      onClick: () => navigate('/admin/bills')
+    },
+    {
+      title: 'Total Arrears',
+      value: `₹${stats?.totalArrears ?? 0}`,
+      icon: Wallet,
+      color: 'text-purple-500',
+      onClick: () => navigate('/admin/arrears')
+    }
+  ];
+
+  const quickActions = [
+    {
+      label: 'Add Flat',
+      icon: Plus,
+      path: '/admin/flats/new'
+    },
+    {
+      label: 'Manage Flats',
+      icon: Home,
+      path: '/admin/flats'
+    },
+    {
+      label: 'Assign Owners',
+      icon: UserPlus,
+      path: '/admin/owners/assign'
+    },
+    {
+      label: 'Generate Bills',
+      icon: FileText,
+      path: '/admin/bills/generate'
+    },
+    {
+      label: 'View Reports',
+      icon: BarChart,
+      path: '/admin/reports'
+    }
+  ];
+
   return (
     <AdminLayout>
-      <div className="grid gap-4">
-        {/* Overview Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Apartments
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600">Welcome, {user?.name}</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={logout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Navigation */}
+        <Navigation />
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {statsCards.map((stat) => (
+              <Card 
+                key={stat.title}
+                className="cursor-pointer transition-transform hover:scale-105"
+                onClick={stat.onClick}
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-500">
+                    {stat.title}
               </CardTitle>
-              <Building2 className="h-4 w-4 text-gray-500" />
+                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-sm text-gray-500">
-                Active apartment buildings
-              </p>
+                  {loading ? (
+                    <Skeleton className="h-8 w-24" />
+                  ) : (
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                  )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <IndianRupee className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹120,000</div>
-              <p className="text-sm text-gray-500">
-                Monthly rental income
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Outstanding Arrears
-              </CardTitle>
-              <AlertTriangle className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹15,000</div>
-              <p className="text-sm text-gray-500">
-                Unpaid dues from residents
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Occupancy Rate
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">92%</div>
-              <p className="text-sm text-gray-500">
-                Apartments currently occupied
-              </p>
-            </CardContent>
-          </Card>
+            ))}
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue and Expenses</CardTitle>
-              {/* <CardDescription>Monthly comparison of income vs expenses</CardDescription> */}
-            </CardHeader>
-            <CardContent className="pl-2">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  {/* <Legend /> */}
-                  <Bar dataKey="income" fill="#82ca9d" name="Income" />
-                  <Bar dataKey="expenses" fill="#8884d8" name="Expenses" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Expense Distribution</CardTitle>
-              {/* <CardDescription>Proportion of expenses by category</CardDescription> */}
-            </CardHeader>
-            <CardContent className="flex justify-center">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieChartData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    label
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  {/* <Legend /> */}
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Transactions Section */}
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            {/* <CardDescription>Latest financial activities</CardDescription> */}
+                <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 opacity-70" />
-                        <span>{transaction.date}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell>₹{transaction.amount}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={transaction.status === 'Paid' ? 'default' : 'secondary'}
-                      >
-                        {transaction.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+              <CardContent className="grid gap-4">
+                {quickActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => navigate(action.path)}
+                  >
+                    <action.icon className="w-4 h-4 mr-2" />
+                    {action.label}
+                  </Button>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Send Notifications</CardTitle>
-              {/* <CardDescription>Broadcast messages to residents</CardDescription> */}
-            </CardHeader>
-            <CardContent className="flex items-center space-x-4">
-              <Bell className="h-6 w-6 text-gray-500" />
-              <Button>
-                <Send className="h-4 w-4 mr-2" />
-                Send
-              </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Add New Expense</CardTitle>
-              {/* <CardDescription>Record a new expense entry</CardDescription> */}
+                <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center space-x-4">
-              <Plus className="h-6 w-6 text-gray-500" />
-              <Button>
-                <FileText className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
+              <CardContent>
+                <div className="space-y-4">
+                  {loading ? (
+                    Array(3).fill(0).map((_, i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="w-2 h-2 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-4">
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        <div>
+                          <p className="text-sm font-medium">New Owner Registered</p>
+                          <p className="text-xs text-gray-500">2 minutes ago</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        <div>
+                          <p className="text-sm font-medium">Bill Generated</p>
+                          <p className="text-xs text-gray-500">1 hour ago</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                        <div>
+                          <p className="text-sm font-medium">Payment Received</p>
+                          <p className="text-xs text-gray-500">3 hours ago</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Manage Users</CardTitle>
-              {/* <CardDescription>Add, edit, or remove user accounts</CardDescription> */}
+                <CardTitle>Upcoming Tasks</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center space-x-4">
-              <Users className="h-6 w-6 text-gray-500" />
-              <Button>
-                <Users className="h-4 w-4 mr-2" />
-                Manage Users
-              </Button>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                    <div>
+                      <p className="text-sm font-medium">Monthly Bills Due</p>
+                      <p className="text-xs text-gray-500">In 2 days</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <div>
+                      <p className="text-sm font-medium">Maintenance Due</p>
+                      <p className="text-xs text-gray-500">In 5 days</p>
+                    </div>
+                  </div>
+                </div>
             </CardContent>
           </Card>
         </div>
+        </main>
       </div>
     </AdminLayout>
   );

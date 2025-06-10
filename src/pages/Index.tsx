@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       navigate('/admin');
-    }, 3000);
+    }, 3001);
 
     return () => clearTimeout(timer);
   }, [navigate]);

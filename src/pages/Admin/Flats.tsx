@@ -1,14 +1,13 @@
-
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { Button } from '@/components/ui/button';
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -20,665 +19,575 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { Plus, Pencil, UserMinus, Search, UserPlus, Trash2 } from 'lucide-react';
+import API from '@/lib/api/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import { Plus, Search, Edit, Trash2, UserPlus, Building2, MapPin, Calendar } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 
 interface Apartment {
-  apartment_id: string;
+  _id: string;
   name: string;
-  location: string;
-  total_flats: number;
-  created_at: string;
-}
-
-interface Flat {
-  flat_id: string;
-  apartment_id: string;
-  flat_number: string;
-  type: '1BHK' | '2BHK' | '3BHK' | '4BHK';
-  size_sqft: number;
-  owner_id?: string;
-  owner_name?: string;
-  owner_phone?: string;
-  owner_email?: string;
-  status: 'Vacant' | 'Occupied';
+  location?: string;
+  createdAt?: string;
+  totalFloors?: number;
+  units?: number;
+  address?: string;
 }
 
 interface Owner {
-  owner_id: string;
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  flatId?: string | null;
+}
+
+interface Flat {
+  _id: string;
+  flatNumber: string;
+  floor: number;
+  type: '1BHK' | '2BHK' | '3BHK';
+  areaSqft: number;
+  isOccupied: boolean;
+  ownerId?: string | null;
+  owner?: {
+    _id: string;
   name: string;
   phone: string;
   email: string;
+  } | null;
+  apartmentId: string;
+  apartment?: {
+    _id: string;
+    name: string;
+  } | null;
+  maintenanceCharge?: number;
 }
 
-const Flats = () => {
-  const { apartmentId } = useParams();
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAssignOwnerModalOpen, setIsAssignOwnerModalOpen] = useState(false);
-  const [editingFlat, setEditingFlat] = useState<Flat | null>(null);
-  const [assigningFlat, setAssigningFlat] = useState<Flat | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [formData, setFormData] = useState({
-    flat_number: '',
-    type: '',
-    size_sqft: '',
+export function Flats() {
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [flats, setFlats] = useState<Flat[]>([]);
+  const [selectedApartment, setSelectedApartment] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentFlat, setCurrentFlat] = useState<Partial<Flat>>({
+    flatNumber: '',
+    floor: 1,
+    type: '2BHK',
+    areaSqft: 1000
   });
+  const [unassignModal, setUnassignModal] = useState<{ open: boolean; flat?: Flat }>({ open: false });
+  const [assignOwnerModal, setAssignOwnerModal] = useState<{ open: boolean; flat?: Flat }>({ open: false });
+  const [selectedOwnerForAssignment, setSelectedOwnerForAssignment] = useState<string>('');
+  const [unassignedOwners, setUnassignedOwners] = useState<Owner[]>([]);
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
 
-  // Mock data - replace with API calls
-  const apartment: Apartment = {
-    apartment_id: apartmentId || 'APT001',
-    name: 'Sky The White House',
-    location: 'Mallampet',
-    total_flats: 40,
-    created_at: '2024-01-15T10:20:00Z',
-  };
-
-  const [flats, setFlats] = useState<Flat[]>([
-    {
-      flat_id: 'F001',
-      apartment_id: 'APT001',
-      flat_number: 'G1',
-      type: '2BHK',
-      size_sqft: 1200,
-      owner_id: 'O001',
-      owner_name: 'Rajesh Kumar',
-      owner_phone: '+91 9876543210',
-      owner_email: 'rajesh@email.com',
-      status: 'Occupied',
-    },
-    {
-      flat_id: 'F002',
-      apartment_id: 'APT001',
-      flat_number: 'G2',
-      type: '3BHK',
-      size_sqft: 1500,
-      owner_id: 'O002',
-      owner_name: 'Priya Sharma',
-      owner_phone: '+91 9876543211',
-      owner_email: 'priya@email.com',
-      status: 'Occupied',
-    },
-    {
-      flat_id: 'F003',
-      apartment_id: 'APT001',
-      flat_number: 'G3',
-      type: '2BHK',
-      size_sqft: 1200,
-      status: 'Vacant',
-    },
-    {
-      flat_id: 'F004',
-      apartment_id: 'APT001',
-      flat_number: 'F1',
-      type: '3BHK',
-      size_sqft: 1500,
-      status: 'Vacant',
-    },
-  ]);
-
-  const mockOwners: Owner[] = [
-    { owner_id: 'O003', name: 'Amit Patel', phone: '+91 9876543212', email: 'amit@email.com' },
-    { owner_id: 'O004', name: 'Sneha Reddy', phone: '+91 9876543213', email: 'sneha@email.com' },
-    { owner_id: 'O005', name: 'Vikram Singh', phone: '+91 9876543214', email: 'vikram@email.com' },
-  ];
-
-  const itemsPerPage = 10;
-  const filteredFlats = flats.filter(flat =>
-    flat.flat_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (flat.owner_name && flat.owner_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-  const totalPages = Math.ceil(filteredFlats.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedFlats = filteredFlats.slice(startIndex, startIndex + itemsPerPage);
-
-  const handleAddFlat = () => {
-    const newFlat: Flat = {
-      flat_id: `F${String(flats.length + 1).padStart(3, '0')}`,
-      apartment_id: apartment.apartment_id,
-      flat_number: formData.flat_number,
-      type: formData.type as Flat['type'],
-      size_sqft: parseInt(formData.size_sqft),
-      status: 'Vacant',
+  useEffect(() => {
+    const fetchApartments = async () => {
+      try {
+        const response = await API.get<Apartment[]>('/admin/apartments');
+        setApartments(response.data);
+        const apartmentIdFromUrl = params.get('apartmentId');
+        if (apartmentIdFromUrl) {
+          setSelectedApartment(apartmentIdFromUrl);
+        } else if (response.data.length > 0) {
+          setSelectedApartment(response.data[0]._id);
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch apartments',
+          variant: 'destructive',
+        });
+      }
     };
-    setFlats([...flats, newFlat]);
-    setFormData({ flat_number: '', type: '', size_sqft: '' });
-    setIsAddModalOpen(false);
+    fetchApartments();
+  }, []);
+
+  useEffect(() => {
+    if (selectedApartment) {
+      fetchFlats(selectedApartment);
+      navigate(`?apartmentId=${selectedApartment}`, { replace: true });
+    } else {
+      setFlats([]);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [selectedApartment]);
+
+  useEffect(() => {
+    if (assignOwnerModal.open) {
+      const fetchUnassignedOwners = async () => {
+        try {
+          console.log('Fetching unassigned owners...');
+          const response = await API.get<Owner[]>('/admin/owners/unassigned');
+          console.log('Unassigned owners response:', response.data);
+          setUnassignedOwners(response.data);
+        } catch (error) {
+          console.error('Failed to fetch unassigned owners:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch unassigned owners',
+            variant: 'destructive',
+          });
+        }
+      };
+      fetchUnassignedOwners();
+    } else {
+      setSelectedOwnerForAssignment('');
+      setUnassignedOwners([]);
+    }
+  }, [assignOwnerModal.open]);
+
+  const fetchFlats = async (aptId: string) => {
+    try {
+      const response = await API.get<Flat[]>(`/admin/flats?apartmentId=${aptId}`);
+      setFlats(response.data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch flats',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleEditFlat = () => {
-    if (!editingFlat) return;
-    
-    setFlats(flats.map(flat => 
-      flat.flat_id === editingFlat.flat_id 
-        ? { 
-            ...flat, 
-            flat_number: formData.flat_number,
-            type: formData.type as Flat['type'],
-            size_sqft: parseInt(formData.size_sqft)
-          }
-        : flat
-    ));
-    setFormData({ flat_number: '', type: '', size_sqft: '' });
-    setEditingFlat(null);
-    setIsEditModalOpen(false);
+  const handleSubmit = async () => {
+    try {
+      if (!currentFlat.flatNumber || !selectedApartment) {
+        toast({
+          title: 'Error',
+          description: 'Please fill all required fields',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const flatData = {
+        flatNumber: currentFlat.flatNumber,
+        floor: currentFlat.floor || 1,
+        type: currentFlat.type || '2BHK',
+        areaSqft: currentFlat.areaSqft || 1000,
+        apartmentId: selectedApartment,
+      };
+
+      console.log('Submitting flat data:', flatData);
+
+      if (currentFlat._id) {
+        const response = await API.put(`/admin/flats/${currentFlat._id}`, flatData);
+        console.log('Update response:', response.data);
+        toast({
+          title: 'Success',
+          description: 'Flat updated successfully',
+        });
+      } else {
+        const response = await API.post('/admin/flats', flatData);
+        console.log('Create response:', response.data);
+        toast({
+          title: 'Success',
+          description: 'Flat created successfully',
+        });
+      }
+
+      setIsModalOpen(false);
+      setCurrentFlat({
+        flatNumber: '',
+        floor: 1,
+        type: '2BHK',
+        areaSqft: 1000
+      });
+
+      await fetchFlats(selectedApartment);
+    } catch (error: any) {
+      console.error('Error:', error);
+      const errorMessage = error.response?.data?.message || 'Operation failed';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleDeleteFlat = (flatId: string) => {
-    setFlats(flats.filter(flat => flat.flat_id !== flatId));
+  const handleDelete = async (flatId: string) => {
+    try {
+      await API.delete(`/admin/flats/${flatId}`);
+      toast({
+        title: 'Success',
+        description: 'Flat deleted successfully',
+      });
+      fetchFlats(selectedApartment);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete flat',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleAssignOwner = (ownerId: string) => {
-    if (!assigningFlat) return;
-    
-    const selectedOwner = mockOwners.find(owner => owner.owner_id === ownerId);
-    if (!selectedOwner) return;
-
-    setFlats(flats.map(flat =>
-      flat.flat_id === assigningFlat.flat_id
-        ? {
-            ...flat,
-            owner_id: selectedOwner.owner_id,
-            owner_name: selectedOwner.name,
-            owner_phone: selectedOwner.phone,
-            owner_email: selectedOwner.email,
-            status: 'Occupied' as const,
-          }
-        : flat
-    ));
-    setAssigningFlat(null);
-    setIsAssignOwnerModalOpen(false);
+  const handleUnassign = async (flat: Flat) => {
+    try {
+      await API.put(`/admin/flats/${flat._id}/unassign-owner`);
+      toast({
+        title: 'Success',
+        description: 'Owner unassigned successfully',
+      });
+      fetchFlats(selectedApartment);
+      setUnassignModal({ open: false });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to unassign owner',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleUnassignOwner = (flatId: string) => {
-    setFlats(flats.map(flat =>
-      flat.flat_id === flatId
-        ? {
-            flat_id: flat.flat_id,
-            apartment_id: flat.apartment_id,
-            flat_number: flat.flat_number,
-            type: flat.type,
-            size_sqft: flat.size_sqft,
-            status: 'Vacant' as const,
-          }
-        : flat
-    ));
+  const handleAssignOwner = async () => {
+    if (!assignOwnerModal.flat || !selectedOwnerForAssignment) {
+      toast({
+        title: 'Error',
+        description: 'Please select an owner to assign.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await API.put(`/admin/flats/${assignOwnerModal.flat._id}/assign-owner`, {
+        ownerId: selectedOwnerForAssignment,
+      });
+      toast({
+        title: 'Success',
+        description: 'Owner assigned successfully!',
+      });
+      setAssignOwnerModal({ open: false });
+      setSelectedOwnerForAssignment('');
+      fetchFlats(selectedApartment);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to assign owner.',
+        variant: 'destructive',
+      });
+      console.error('Assign owner error:', error);
+    }
   };
 
-  const openEditModal = (flat: Flat) => {
-    setEditingFlat(flat);
-    setFormData({
-      flat_number: flat.flat_number,
-      type: flat.type,
-      size_sqft: flat.size_sqft.toString(),
-    });
-    setIsEditModalOpen(true);
-  };
+  const filteredFlats = flats.filter(flat =>
+    flat.flatNumber.toLowerCase().includes(search.toLowerCase()) ||
+    flat.type.toLowerCase().includes(search.toLowerCase()) ||
+    (flat.owner?.name || '').toLowerCase().includes(search.toLowerCase())
+  );
 
-  const openAssignOwnerModal = (flat: Flat) => {
-    setAssigningFlat(flat);
-    setIsAssignOwnerModalOpen(true);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const handleEdit = (flat: Flat) => {
+    setCurrentFlat(flat);
+    setIsModalOpen(true);
   };
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Breadcrumb */}
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin">Dashboard</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/apartments">Apartments Management</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{apartment.name} - Flats</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        {/* Apartment Info Header */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              {apartment.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{apartment.location}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span>{apartment.total_flats} Total Flats</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>Created {formatDate(apartment.created_at)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Flats Management</h1>
-            <p className="text-muted-foreground">
-              Manage flats in {apartment.name}
-            </p>
-          </div>
-
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Flats Management</h1>
+          <Button onClick={() => {
+            setCurrentFlat({
+              flatNumber: '',
+              floor: 1,
+              type: '2BHK',
+              areaSqft: 1000
+            });
+            setIsModalOpen(true);
+          }}>
+            <Plus className="mr-2 h-4 w-4" />
                 Add Flat
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New Flat</DialogTitle>
-                <DialogDescription>
-                  Enter the details for the new flat.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="flat_number">Flat Number</Label>
-                  <Input
-                    id="flat_number"
-                    value={formData.flat_number}
-                    onChange={(e) => setFormData({ ...formData, flat_number: e.target.value })}
-                    placeholder="e.g., G3, F1, S2"
-                  />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+
+        <div className="mb-6 space-y-4">
+          <Select
+            value={selectedApartment}
+            onValueChange={setSelectedApartment}
+          >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select flat type" />
+              <SelectValue placeholder="Select Apartment" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1BHK">1BHK</SelectItem>
-                      <SelectItem value="2BHK">2BHK</SelectItem>
-                      <SelectItem value="3BHK">3BHK</SelectItem>
-                      <SelectItem value="4BHK">4BHK</SelectItem>
+              {apartments.map((apt) => (
+                <SelectItem key={apt._id} value={apt._id}>
+                  {apt.name}
+                </SelectItem>
+              ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="size_sqft">Size (sq. ft.)</Label>
-                  <Input
-                    id="size_sqft"
-                    type="number"
-                    value={formData.size_sqft}
-                    onChange={(e) => setFormData({ ...formData, size_sqft: e.target.value })}
-                    placeholder="e.g., 1200"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddFlat} 
-                  disabled={!formData.flat_number || !formData.type || !formData.size_sqft}
-                >
-                  Add Flat
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
 
-        {/* Search and Filter */}
+          {selectedApartment && (
         <Card>
           <CardHeader>
-            <CardTitle>Search & Filter</CardTitle>
+                <CardTitle>{apartments.find(apt => apt._id === selectedApartment)?.name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
+                <p>
+                  <strong>Address:</strong>{' '}
+                  {apartments.find(apt => apt._id === selectedApartment)?.location || 'N/A'}
+                </p>
+                <p>
+                  <strong>Total Units:</strong>{' '}
+                  {apartments.find(apt => apt._id === selectedApartment)?.units || 'N/A'}
+                </p>
+                <p>
+                  <strong>Total Floors:</strong>{' '}
+                  {apartments.find(apt => apt._id === selectedApartment)?.totalFloors || 'N/A'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
-                placeholder="Search by flat number or owner name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
+              type="text"
+              placeholder="Search flats by number, type, or owner..."
+              className="pl-10 pr-4 py-2 border rounded-md w-full"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
-        {/* Flats Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Flats ({filteredFlats.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Flat No.</TableHead>
+                <TableHead>Flat Number</TableHead>
+                <TableHead>Floor</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Size (sq. ft.)</TableHead>
+                <TableHead>Area (sqft)</TableHead>
+                <TableHead>Status</TableHead>
                   <TableHead>Owner</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedFlats.map((flat) => (
-                  <TableRow key={flat.flat_id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{flat.flat_number}</TableCell>
+              {filteredFlats.length > 0 ? (
+                filteredFlats.map((flat) => (
+                  <TableRow key={flat._id}>
+                    <TableCell className="font-medium">{flat.flatNumber}</TableCell>
+                    <TableCell>{flat.floor}</TableCell>
                     <TableCell>{flat.type}</TableCell>
-                    <TableCell>{flat.size_sqft}</TableCell>
+                    <TableCell>{flat.areaSqft}</TableCell>
                     <TableCell>
-                      {flat.owner_name ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="cursor-pointer">
-                                <div className="font-medium">{flat.owner_name}</div>
-                                <div className="text-sm text-muted-foreground">{flat.owner_phone}</div>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div>
-                                <p className="font-medium">{flat.owner_name}</p>
-                                <p>{flat.owner_phone}</p>
-                                <p>{flat.owner_email}</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <span className="text-muted-foreground">Not assigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={flat.status === 'Occupied' ? 'default' : 'secondary'}>
-                        {flat.status}
+                      <Badge variant={flat.isOccupied ? 'default' : 'secondary'}>
+                        {flat.isOccupied ? 'Occupied' : 'Vacant'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {flat.status === 'Vacant' && (
+                    <TableCell>
+                      {flat.owner ? flat.owner.name : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right flex space-x-2 justify-end">
                           <Button
-                            variant="outline"
+                        variant="ghost"
                             size="sm"
-                            onClick={() => openAssignOwnerModal(flat)}
+                        onClick={() => handleEdit(flat)}
                           >
-                            <UserPlus className="h-4 w-4 mr-1" />
-                            Assign Owner
+                        <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
-                        {flat.status === 'Occupied' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <UserPlus className="h-4 w-4 mr-1" />
-                                Unassign
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Unassign Owner</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to unassign {flat.owner_name} from flat {flat.flat_number}?
-                                  This will make the flat vacant.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleUnassignOwner(flat.flat_id)}
-                                >
-                                  Unassign
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
+                      {!flat.isOccupied ? (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => openEditModal(flat)}
+                          onClick={() => setAssignOwnerModal({ open: true, flat })}
                         >
-                          <Edit className="h-4 w-4" />
+                          <UserPlus className="h-4 w-4" />
+                              </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setUnassignModal({ open: true, flat })}
+                        >
+                          <UserMinus className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                      )}
                             <Button 
-                              variant="outline" 
+                        variant="ghost"
                               size="sm"
-                              disabled={flat.status === 'Occupied'}
+                        onClick={() => handleDelete(flat._id)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete flat
-                                "{flat.flat_number}" and all associated data.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteFlat(flat.flat_id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    No flats found for this apartment.
+                  </TableCell>
+                </TableRow>
+              )}
               </TableBody>
             </Table>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) setCurrentPage(currentPage - 1);
-                        }}
-                        className={currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setCurrentPage(page);
-                          }}
-                          isActive={currentPage === page}
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                        }}
-                        className={currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Edit Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Flat</DialogTitle>
-              <DialogDescription>
-                Update the flat details below.
-              </DialogDescription>
+              <DialogTitle>{currentFlat._id ? 'Edit Flat' : 'Add New Flat'}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-flat_number">Flat Number</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="flatNumber" className="text-right">
+                  Flat Number
+                </Label>
                 <Input
-                  id="edit-flat_number"
-                  value={formData.flat_number}
-                  onChange={(e) => setFormData({ ...formData, flat_number: e.target.value })}
-                  placeholder="e.g., G3, F1, S2"
+                  id="flatNumber"
+                  value={currentFlat.flatNumber || ''}
+                  onChange={(e) =>
+                    setCurrentFlat({ ...currentFlat, flatNumber: e.target.value })
+                  }
+                  className="col-span-3"
+                  required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-type">Type</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select flat type" />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="floor" className="text-right">
+                  Floor
+                </Label>
+                <Input
+                  id="floor"
+                  type="number"
+                  value={currentFlat.floor || 1}
+                  onChange={(e) =>
+                    setCurrentFlat({ ...currentFlat, floor: parseInt(e.target.value) })
+                  }
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="type" className="text-right">
+                  Type
+                </Label>
+                <Select
+                  value={currentFlat.type || '2BHK'}
+                  onValueChange={(value) =>
+                    setCurrentFlat({ ...currentFlat, type: value as '1BHK' | '2BHK' | '3BHK' })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1BHK">1BHK</SelectItem>
                     <SelectItem value="2BHK">2BHK</SelectItem>
                     <SelectItem value="3BHK">3BHK</SelectItem>
-                    <SelectItem value="4BHK">4BHK</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-size_sqft">Size (sq. ft.)</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="areaSqft" className="text-right">
+                  Area (sqft)
+                </Label>
                 <Input
-                  id="edit-size_sqft"
+                  id="areaSqft"
                   type="number"
-                  value={formData.size_sqft}
-                  onChange={(e) => setFormData({ ...formData, size_sqft: e.target.value })}
-                  placeholder="e.g., 1200"
+                  value={currentFlat.areaSqft || 1000}
+                  onChange={(e) =>
+                    setCurrentFlat({ ...currentFlat, areaSqft: parseInt(e.target.value) })
+                  }
+                  className="col-span-3"
+                  required
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleEditFlat} 
-                disabled={!formData.flat_number || !formData.type || !formData.size_sqft}
-              >
-                Save Changes
+              <Button type="submit" onClick={handleSubmit}>
+                {currentFlat._id ? 'Save Changes' : 'Add Flat'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Assign Owner Modal */}
-        <Dialog open={isAssignOwnerModalOpen} onOpenChange={setIsAssignOwnerModalOpen}>
+        <Dialog open={unassignModal.open} onOpenChange={() => setUnassignModal({ open: false })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Unassign Owner</DialogTitle>
+            </DialogHeader>
+            <p>Are you sure you want to unassign the owner from flat "{unassignModal.flat?.flatNumber}"?</p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setUnassignModal({ open: false })}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => unassignModal.flat && handleUnassign(unassignModal.flat)}>
+                Unassign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog 
+          open={assignOwnerModal.open} 
+          onOpenChange={(open) => {
+            setAssignOwnerModal({ open });
+          }}
+        >
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Assign Owner</DialogTitle>
+              <DialogTitle>Assign Owner to Flat {assignOwnerModal.flat?.flatNumber}</DialogTitle>
               <DialogDescription>
-                Select an owner to assign to flat {assigningFlat?.flat_number}.
+                Select an owner to assign to this flat.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <div className="space-y-2">
-                {mockOwners.map((owner) => (
-                  <div
-                    key={owner.owner_id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                    onClick={() => handleAssignOwner(owner.owner_id)}
-                  >
-                    <div>
-                      <div className="font-medium">{owner.name}</div>
-                      <div className="text-sm text-muted-foreground">{owner.phone}</div>
-                      <div className="text-sm text-muted-foreground">{owner.email}</div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Assign
-                    </Button>
-                  </div>
-                ))}
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="owner-select" className="text-right">
+                  Select Owner
+                </Label>
+                <Select
+                  value={selectedOwnerForAssignment}
+                  onValueChange={setSelectedOwnerForAssignment}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select an owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unassignedOwners.length > 0 ? (
+                      unassignedOwners.map((owner) => (
+                        <SelectItem key={owner._id} value={owner._id}>
+                          {owner.name} ({owner.email})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-owners-found" disabled>
+                        No unassigned owners available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAssignOwnerModalOpen(false)}>
+              <Button variant="outline" onClick={() => setAssignOwnerModal({ open: false })}>
                 Cancel
+              </Button>
+              <Button
+                onClick={handleAssignOwner}
+                disabled={!selectedOwnerForAssignment}
+              >
+                Assign Owner
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -686,6 +595,4 @@ const Flats = () => {
       </div>
     </AdminLayout>
   );
-};
-
-export default Flats;
+}
