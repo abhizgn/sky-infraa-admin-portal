@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-// import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -238,7 +238,7 @@ export default function AdminBills() {
         return;
       }
 
-      const response = await API.post('/admin/maintenance', {
+      await API.post('/admin/maintenance', {
         ...maintenanceForm,
         flatId: selectedFlat,
       });
@@ -414,7 +414,7 @@ export default function AdminBills() {
               </div>
             </CardContent>
           </Card>
-          {/* <Card>
+          <Card>
             <CardHeader>
               <CardTitle>Bills for {monthYear ? format(monthYear, 'MMM yyyy') : 'selected month'}</CardTitle>
               <CardDescription>{filteredBills.length} bills found</CardDescription>
@@ -490,7 +490,7 @@ export default function AdminBills() {
                 </div>
               )}
             </CardContent>
-          </Card> */}
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Maintenance Items History</CardTitle>

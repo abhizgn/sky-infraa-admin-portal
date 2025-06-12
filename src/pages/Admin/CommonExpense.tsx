@@ -244,13 +244,13 @@ export default function CommonExpenses() {
                 <>
                   {expenseForm.distributionType === 'per_flat' && (
                     <p className="text-sm text-gray-600">
-                      Amount per flat: `\((expenseForm.amount / flatsInSelectedApartment.length).toFixed(2)\)` (for {flatsInSelectedApartment.length} flats)
+                      Amount per flat: {((expenseForm.amount / flatsInSelectedApartment.length)).toFixed(2)} (for {flatsInSelectedApartment.length} flats)
                     </p>
                   )}
                   {expenseForm.distributionType === 'per_sqft' && (
                     <p className="text-sm text-gray-600">
-                      Total area of flats: `\({flatsInSelectedApartment.reduce((sum, flat) => sum + flat.areaSqft, 0)}\)` sq.ft. <br />
-                      Per sq.ft. charge: `\((expenseForm.amount / flatsInSelectedApartment.reduce((sum, flat) => sum + flat.areaSqft, 0)).toFixed(3)\)`
+                      Total area of flats: {flatsInSelectedApartment.reduce((sum, flat) => sum + flat.areaSqft, 0)} sq.ft. <br />
+                      Per sq.ft. charge: {((expenseForm.amount / flatsInSelectedApartment.reduce((sum, flat) => sum + flat.areaSqft, 0))).toFixed(3)}
                     </p>
                   )}
                 </>

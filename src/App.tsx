@@ -7,7 +7,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Import your components
 import AdminDashboard from './pages/Admin/Dashboard';
-import  OwnerDashboard  from './pages/Owner/Dashboard';
+import  OwnerDashboard  from './pages/Owner/OwnerDashboard';
 import { Toaster } from "../src/components/ui/toaster";
 import { Toaster as Sonner } from "../src/components/ui/sonner";
 import { TooltipProvider } from "../src/components/ui/tooltip";
@@ -21,14 +21,17 @@ import OwnerManagement from "./pages/Admin/OwnerManagement";
 // import Expenses from "./pages/Admin/Expenses";
 import Arrears from "./pages/Admin/Arrears";
 import Settings from "./pages/Admin/Settings";
-import OwnerBills from "./pages/Owner/Bills";
-import OwnerPayNow from "./pages/Owner/PayNow";
-import OwnerArrears from "./pages/Owner/Arrears";
+// import OwnerBills from "./pages/Owner/Bills";
+// import OwnerPayNow from "./pages/Owner/PayNow";
+// import OwnerArrears from "./pages/Owner/Arrears";
 import OwnerSettings from "./pages/Owner/Settings";
 import NotFound from "./pages/NotFound";
 import AdminBills from "./pages/Admin/AdminBills";
 import OwnerAssignment from "./pages/Admin/OwnerAssignment";
 import CommonExpenses from "./pages/Admin/CommonExpense";
+import ArrearsOverview from './pages/Owner/ArrearsOverview';
+import MyBills from './pages/Owner/MyBills';
+import PayNow from './pages/Owner/PayNow';
 
 const queryClient = new QueryClient();
 
@@ -106,10 +109,9 @@ function App() {
           />
           <Route path="/admin/arrears" element={<Arrears />} />
           <Route path="/admin/settings" element={<Settings />} />
-          <Route path="/owner" element={<OwnerDashboard />} />
-          <Route path="/owner/bills" element={<OwnerBills />} />
-          <Route path="/owner/pay-now" element={<OwnerPayNow />} />
-          <Route path="/owner/arrears" element={<OwnerArrears />} />
+          <Route path="/owner/bills" element={<MyBills />} />
+          <Route path="/owner/pay" element={<PayNow />} />
+          <Route path="/owner/arrears" element={<ArrearsOverview />} />
           <Route path="/owner/settings" element={<OwnerSettings />} />
           <Route
             path="/admin/owner-assignment"

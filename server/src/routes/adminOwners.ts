@@ -156,7 +156,7 @@ router.put('/:id', verifyToken, adminOnly, async (req, res) => {
     }
 
     const oldFlatId = currentOwner.flatId;
-    const newFlatId = flatId === 'null' ? null : flatId; // Handle 'null' string from frontend if needed
+    const newFlatId = flatId === 'null' ? null : flatId;
 
     // Update the owner
     const updatedOwner = await Owner.findByIdAndUpdate(
@@ -166,10 +166,15 @@ router.put('/:id', verifyToken, adminOnly, async (req, res) => {
         phone,
         email,
         flatId: newFlatId,
-        flat_no: newFlatId ? `FLAT-${newFlatId}` : undefined // Ensure flat_no updates correctly
+        flat_no: newFlatId ? `FLAT-${newFlatId}` : undefined
       },
       { new: true }
     );
+
+    // Add null check for updatedOwner
+    if (!updatedOwner) {
+      return res.status(404).json({ message: 'Owner not found after update' });
+    }
 
     // Handle flat assignment/unassignment logic
     if (oldFlatId && String(oldFlatId) !== String(newFlatId)) {

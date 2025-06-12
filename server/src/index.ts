@@ -10,6 +10,8 @@ import adminExpenses from './routes/adminExpense';
 import maintenanceRoutes from './routes/adminMaintenance';
 import adminFlatsRoutes from './routes/adminFlats';
 import adminArrearsRoutes from './routes/adminArrears';
+import ownerRoutes from './routes/ownerRoutes';
+import { Arrear } from './models/Arrear'; // Ensure this is imported to register the model
 
 dotenv.config();
 
@@ -34,29 +36,36 @@ app.use('/api/admin/expenses', adminExpenses);
 app.use('/api/admin/maintenance', maintenanceRoutes);
 app.use('/api/admin/flats', adminFlatsRoutes);
 app.use('/api/admin/arrears', adminArrearsRoutes);
+app.use('/api/owner', ownerRoutes);
 
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI || 'mongodb+srv://abhizgn1026:5nVJkTYWN6d0q3my@cluster0.wzp4ld5.mongodb.net/skyinfraa-panel?retryWrites=true&w=majority&appName=Cluster0')
   .then(async () => {
     console.log('✅ MongoDB Connected');
-    // Drop problematic indexes on startup
-    try {
-      // Drop flat_no_1 index for flats collection
-      await mongoose.connection.db.collection('flats').dropIndex('flat_no_1');
-      console.log('Dropped problematic flat_no_1 index from flats collection');
-    } catch (error) {
-      // Ignore error if index doesn't exist
-      console.log('No problematic flat_no_1 index to drop from flats collection');
-    }
+    
+    // Ensure connection is established before dropping indexes
+    if (mongoose.connection.db) {
+      // Drop problematic indexes on startup
+      try {
+        // Drop flat_no_1 index for flats collection
+        await mongoose.connection.db.collection('flats').dropIndex('flat_no_1');
+        console.log('Dropped problematic flat_no_1 index from flats collection');
+      } catch (error) {
+        // Ignore error if index doesn't exist
+        console.log('No problematic flat_no_1 index to drop from flats collection');
+      }
 
-    try {
-      // Drop flat_no_1 index for owners collection
-      await mongoose.connection.db.collection('owners').dropIndex('flat_no_1');
-      console.log('Dropped problematic flat_no_1 index from owners collection');
-    } catch (error) {
-      // Ignore error if index doesn't exist
-      console.log('No problematic flat_no_1 index to drop from owners collection');
+      try {
+        // Drop flat_no_1 index for owners collection
+        await mongoose.connection.db.collection('owners').dropIndex('flat_no_1');
+        console.log('Dropped problematic flat_no_1 index from owners collection');
+      } catch (error) {
+        // Ignore error if index doesn't exist
+        console.log('No problematic flat_no_1 index to drop from owners collection');
+      }
+    } else {
+      console.log('MongoDB connection not fully established');
     }
   })
   .catch(err => console.error('❌ Mongo Error:', err));

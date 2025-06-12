@@ -27,7 +27,9 @@ const ownerSchema = new Schema<IOwnerDocument>({
   },
   email: { 
     type: String,
-    sparse: true // Make email index sparse to allow null/undefined values
+    required: true,
+    unique: true,
+    sparse: true
   },
   phone: { 
     type: String, 
@@ -55,8 +57,8 @@ const ownerSchema = new Schema<IOwnerDocument>({
 });
 
 // Drop existing indexes
-ownerSchema.index({ email: 1 }, { unique: true, sparse: true });
-ownerSchema.index({ flat_no: 1 }, { unique: true, sparse: true });
+ownerSchema.index({ email: 1 }, { unique: true });
+ownerSchema.index({ flatId: 1 }, { unique: true, sparse: true });
 
 // Hash password before saving
 ownerSchema.pre('save', async function(next) {
